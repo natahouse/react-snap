@@ -17,6 +17,7 @@
     "highland": "2.13.5",
     "html-minifier": "4.0.0",
     "is-glob": "^4.0.1",
+    "isomorphic-fetch": "^3.0.0",
     "minimalcss": "0.11.2",
     "mkdirp": "1.0.4",
     "puppeteer": "^5.4.1",
