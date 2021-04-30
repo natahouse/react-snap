@@ -75,6 +75,7 @@ const defaultOptions = {
   //# even more workarounds
   removeStyleTags: false,
   preloadImages: false,
+  preloadFonts: false,
   // add async true to script tags
   asyncScriptTags: false,
   //# another feature creep
@@ -173,6 +174,7 @@ const preloadResources = opt => {
     page,
     basePath,
     preloadImages,
+    preloadFonts,
     cacheAjaxRequests,
     preconnectThirdParty,
     http2PushManifest,
@@ -189,19 +191,22 @@ const preloadResources = opt => {
     if (/^http:\/\/localhost/i.test(responseUrl)) {
       if (uniqueResources.has(responseUrl)) return;
       if (preloadImages && /\.(png|jpg|jpeg|webp|gif|svg)$/.test(responseUrl)) {
+        const linkAttributes = {
+          rel: "preload",
+          as: "image",
+          href: route
+        };
+
         if (http2PushManifest) {
-          http2PushManifestItems.push({
-            link: route,
-            as: "image"
-          });
+          http2PushManifestItems.push(linkAttributes);
         } else {
-          await page.evaluate(route => {
+          await page.evaluate(linkAttributes => {
             const linkTag = document.createElement("link");
-            linkTag.setAttribute("rel", "preload");
-            linkTag.setAttribute("as", "image");
-            linkTag.setAttribute("href", route);
-            document.body.appendChild(linkTag);
-          }, route);
+            Object.entries(linkAttributes).forEach(([name, value]) => {
+              linkTag.setAttribute(name, value);
+            });
+            document.head.appendChild(linkTag);
+          }, linkAttributes);
         }
       } else if (cacheAjaxRequests && ct.includes("json")) {
         const json = await response.json();
@@ -213,7 +218,8 @@ const preloadResources = opt => {
           .pop();
         if (!ignoreForPreload.includes(fileName)) {
           http2PushManifestItems.push({
-            link: route,
+            href: route,
+            rel: "preload",
             as: "script"
           });
         }
@@ -224,7 +230,8 @@ const preloadResources = opt => {
           .pop();
         if (!ignoreForPreload.includes(fileName)) {
           http2PushManifestItems.push({
-            link: route,
+            href: route,
+            rel: "preload",
             as: "style"
           });
         }
@@ -241,6 +248,28 @@ const preloadResources = opt => {
         linkTag.setAttribute("href", route);
         document.head.appendChild(linkTag);
       }, domain);
+    }
+
+    if (preloadFonts && /\.(woff2?|otf|ttf|eot)$/.test(responseUrl)) {
+      const linkAttributes = {
+        rel: "preload",
+        as: "font",
+        href: route,
+        type: ct,
+        crossorigin: "anonymous"
+      };
+
+      if (http2PushManifest) {
+        http2PushManifestItems.push(linkAttributes);
+      } else {
+        await page.evaluate(linkAttributes => {
+          const linkTag = document.createElement("link");
+          Object.entries(linkAttributes).forEach(([name, value]) => {
+            linkTag.setAttribute(name, value);
+          });
+          document.head.appendChild(linkTag);
+        }, linkAttributes);
+      }
     }
   });
   return { ajaxCache, http2PushManifestItems };
@@ -538,8 +567,9 @@ const fixParcelChunksIssue = ({
 }) => {
   return page.evaluate(
     (basePath, http2PushManifest, inlineCss) => {
-      const localScripts = Array.from(document.scripts)
-        .filter(x => x.src && x.src.startsWith(basePath))
+      const localScripts = Array.from(document.scripts).filter(
+        x => x.src && x.src.startsWith(basePath)
+      );
 
       const mainRegexp = /main\.[\w]{8}\.js/;
       const mainScript = localScripts.find(x => mainRegexp.test(x.src));
@@ -743,11 +773,13 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
     beforeFetch: async ({ page, route }) => {
       const {
         preloadImages,
+        preloadFonts,
         cacheAjaxRequests,
         preconnectThirdParty
       } = options;
       if (
         preloadImages ||
+        preloadFonts ||
         cacheAjaxRequests ||
         preconnectThirdParty ||
         http2PushManifest
@@ -757,6 +789,7 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
             page,
             basePath,
             preloadImages,
+            preloadFonts,
             cacheAjaxRequests,
             preconnectThirdParty,
             http2PushManifest,
@@ -879,7 +912,7 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
         );
         routePath = normalizePath(routePath);
         if (routePath !== newPath) {
-          console.log(newPath)
+          console.log(newPath);
           console.log(`💬  in browser redirect (${newPath})`);
           addToQueue(newRoute);
         }
@@ -894,18 +927,24 @@ const run = async (userOptions, { fs } = { fs: nativeFs }) => {
       if (http2PushManifest) {
         const manifest = Object.keys(http2PushManifestItems).reduce(
           (accumulator, key) => {
-            if (http2PushManifestItems[key].length !== 0)
+            if (http2PushManifestItems[key].length !== 0) {
               accumulator.push({
                 source: key,
                 headers: [
                   {
                     key: "Link",
                     value: http2PushManifestItems[key]
-                      .map(x => `<${x.link}>;rel=preload;as=${x.as}`)
+                      .map(
+                        ({ href, ...linkAttributes }) =>
+                          `<${href}>;${Object.entries(linkAttributes)
+                            .map(([name, value]) => `${name}=${value}`)
+                            .join(";")}`
+                      )
                       .join(",")
                   }
                 ]
               });
+            }
             return accumulator;
           },
           []
