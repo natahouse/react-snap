@@ -4,9 +4,16 @@
   "description": "nata.house's fork of react-snap by stereobooster: Zero-configuration framework-agnostic static prerendering for SPAs",
   "main": "index.js",
   "author": "stereobooster",
-  "contributors": ["philipeatela", "natahouse"],
+  "contributors": [
+    "philipeatela",
+    "natahouse"
+  ],
   "license": "MIT",
-  "repository": "natahouse/react-snap",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/natahouse/react-snap.git"
+  },
+  "homepage": "https://github.com/natahouse/react-snap#readme",
   "engines": {
     "node": ">= 8.6.0"
   },
