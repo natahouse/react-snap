@@ -1,6 +1,6 @@
 {
   "name": "react-snap-nh",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "nata.house's fork of react-snap by stereobooster: Zero-configuration framework-agnostic static prerendering for SPAs",
   "main": "index.js",
   "author": "stereobooster",
