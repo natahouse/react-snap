@@ -240,6 +240,9 @@ const crawl = async opt => {
           sourcemapStore
         });
         beforeFetch && beforeFetch({ page, route });
+        
+        if(options.puppeteer.timeout) await page.setDefaultTimeout(options.puppeteer.timeout); 
+        
         await page.setUserAgent(options.userAgent);
         const tracker = createTracker(page);
         try {
