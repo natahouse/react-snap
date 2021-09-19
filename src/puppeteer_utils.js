@@ -266,10 +266,10 @@ const crawl = async opt => {
           console.log(`🔥  error at ${route}`, e);
         }
         if (options.parseErrorContinueExecution) {
-			shuttingDown = false;
-		} else {
-			shuttingDown = true;
-		}
+		shuttingDown = false;
+	} else {
+		shuttingDown = true;
+	}
       }
     } else {
       // this message creates a lot of noise
